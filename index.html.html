@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#004AAD">
+<meta name="description" content="BuildQuant - Plateforme professionnelle de métré et devis pour le BTPH algérien">
+<title>BuildQuant — Métreur Numérique BTPH</title>
+
+<!-- PWA Manifest inline -->
+<link rel="manifest" href="data:application/json,{%22name%22:%22BuildQuant%22,%22short_name%22:%22BuildQuant%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22theme_color%22:%22%23004AAD%22,%22background_color%22:%22%23ffffff%22}">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23004AAD'/><text y='.9em' font-size='70' x='15'>🏗</text></svg>">
+
+<!-- html2pdf.js — client-side PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --blue: #004AAD;
+    --blue-light: #1a63c8;
+    --blue-dim: #e8f0fd;
+    --slate: #475569;
+    --slate-light: #94a3b8;
+    --slate-dim: #f1f5f9;
+    --white: #ffffff;
+    --border: #e2e8f0;
+    --border-focus: #004AAD;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --warning: #d97706;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+    --shadow-lg: 0 10px 40px rgba(0,74,173,0.12), 0 4px 16px rgba(0,0,0,0.06);
+    --radius: 10px;
+    --radius-lg: 16px;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font);
+    background: #f8fafc;
+    color: #1e293b;
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── TOP NAV ── */
+  .topnav {
+    background: var(--blue);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,74,173,0.4);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .brand-icon {
+    width: 32px; height: 32px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  .brand-badge {
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.22);
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .nav-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+
+  .btn-ghost {
+    background: rgba(255,255,255,0.12);
+    color: white;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.22); }
+
+  .btn-white {
+    background: white;
+    color: var(--blue);
+    font-weight: 600;
+  }
+  .btn-white:hover { background: #e8f0fd; box-shadow: var(--shadow-sm); }
+
+  .btn-blue {
+    background: var(--blue);
+    color: white;
+    font-weight: 600;
+  }
+  .btn-blue:hover { background: var(--blue-light); box-shadow: 0 4px 12px rgba(0,74,173,0.35); }
+
+  .btn-danger {
+    background: #fef2f2;
+    color: var(--danger);
+    border: 1px solid #fecaca;
+  }
+  .btn-danger:hover { background: #fee2e2; }
+
+  .btn-outline {
+    background: white;
+    color: var(--slate);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-icon { width: 30px; height: 30px; padding: 0; justify-content: center; }
+
+  /* ── MAIN LAYOUT ── */
+  .main { max-width: 1400px; margin: 0 auto; padding: 24px 20px 120px; }
+
+  /* ── PROJECT HEADER CARD ── */
+  .project-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+  }
+
+  .project-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--slate-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .project-fields {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1fr;
+    gap: 12px;
+  }
+
+  @media (max-width: 640px) {
+    .project-fields { grid-template-columns: 1fr; }
+  }
+
+  .field-group { display: flex; flex-direction: column; gap: 4px; }
+
+  .field-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--slate);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  input[type="text"], input[type="date"], input[type="number"], textarea, select {
+    font-family: var(--font);
+    font-size: 13px;
+    color: #1e293b;
+    background: var(--slate-dim);
+    border: 1.5px solid transparent;
+    border-radius: 7px;
+    padding: 8px 11px;
+    width: 100%;
+    transition: all 0.15s ease;
+    outline: none;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    background: white;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(0,74,173,0.1);
+  }
+
+  input::placeholder, textarea::placeholder { color: #94a3b8; }
+
+  /* ── QUICK ACTIONS BAR ── */
+  .quick-bar {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 14px 20px 10px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    /* No overflow property here — let the child scroll freely */
+  }
+
+  .quick-bar-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--slate-light);
+    margin-bottom: 10px;
+  }
+
+  /* ── THE SCROLLABLE ROW ── */
+  .quick-scroll {
+    display: flex;          /* flex row */
+    flex-wrap: nowrap;      /* NEVER wrap — all chips stay on one line */
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;       /* horizontal scroll when chips overflow */
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;  /* smooth momentum on iOS/Android */
+    scroll-behavior: smooth;
+    padding-bottom: 6px;    /* space for the scrollbar track */
+    /* Subtle thin scrollbar — visible so users know they can scroll */
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  .quick-scroll::-webkit-scrollbar        { height: 4px; }
+  .quick-scroll::-webkit-scrollbar-track  { background: transparent; }
+  .quick-scroll::-webkit-scrollbar-thumb  { background: #cbd5e1; border-radius: 2px; }
+  .quick-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+  .quick-divider {
+    width: 1px;
+    min-width: 1px;   /* prevent divider from being squashed */
+    height: 24px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .quick-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid var(--border);
+    background: white;
+    color: var(--slate);
+    white-space: nowrap;   /* text never wraps inside a chip */
+    flex-shrink: 0;        /* CRITICAL: chip never shrinks — forces scroll instead */
+    transition: all 0.15s ease;
+  }
+  .quick-chip:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+    background: var(--blue-dim);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,74,173,0.15);
+  }
+
+  .quick-chip.vrd {
+    border-color: #c7d2fe;
+    background: #eef2ff;
+    color: #4338ca;
+  }
+  .quick-chip.vrd:hover {
+    border-color: #818cf8;
+    background: #e0e7ff;
+    color: #3730a3;
+    box-shadow: 0 3px 8px rgba(67,56,202,0.2);
+  }
+
+  /* ── TABLE CARD ── */
+  .table-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: #fafbfc;
+  }
+
+  .table-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .row-count-badge {
+    background: var(--blue-dim);
+    color: var(--blue);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .table-wrap { overflow-x: auto; }
+
+  .bpu-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+  }
+
+  .bpu-table thead th {
+    background: #f8fafc;
+    border-bottom: 2px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--slate);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .bpu-table thead th.right { text-align: right; }
+  .bpu-table thead th.center { text-align: center; }
+
+  .bpu-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  .bpu-table tbody tr:hover { background: #fafbfc; }
+  .bpu-table tbody tr.has-desc { background: #fdfeff; }
+
+  .bpu-table td { padding: 8px 12px; vertical-align: top; }
+  .bpu-table td.center { text-align: center; vertical-align: middle; }
+
+  .row-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--slate-light);
+    font-weight: 500;
+    padding-top: 11px;
+    display: block;
+    text-align: center;
+  }
+
+  .desig-cell { min-width: 200px; }
+
+  .desig-input {
+    font-weight: 500;
+    color: #1e293b;
+    background: transparent;
+    border-color: transparent;
+    padding: 6px 8px;
+  }
+  .desig-input:focus { background: white; border-color: var(--blue); }
+
+  .desc-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 3px;
+    font-size: 11px;
+    color: var(--slate-light);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 2px 0;
+    font-family: var(--font);
+    transition: color 0.15s;
+  }
+  .desc-toggle:hover { color: var(--blue); }
+
+  .desc-area {
+    display: none;
+    margin-top: 6px;
+  }
+  .desc-area.open { display: block; }
+
+  .desc-area textarea {
+    font-size: 12px;
+    color: var(--slate);
+    line-height: 1.6;
+    min-height: 64px;
+    resize: vertical;
+    background: #f8fafc;
+  }
+
+  .unit-select {
+    min-width: 80px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .qty-input, .pu-input {
+    font-family: var(--mono);
+    font-size: 13px;
+    text-align: right;
+    min-width: 90px;
+  }
+
+  .total-cell {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--blue);
+    text-align: right;
+    white-space: nowrap;
+    padding-top: 11px;
+    display: block;
+  }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: #cbd5e1;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 5px;
+    transition: all 0.15s;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .delete-btn:hover { color: var(--danger); background: #fef2f2; }
+
+  .table-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: #fafbfc;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--slate-light);
+  }
+  .empty-state-icon { font-size: 36px; margin-bottom: 10px; }
+  .empty-state-title { font-size: 15px; font-weight: 600; color: var(--slate); margin-bottom: 5px; }
+  .empty-state-sub { font-size: 13px; }
+
+  /* ── TOTALS PANEL ── */
+  .totals-panel {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    position: sticky;
+    bottom: 20px;
+  }
+
+  .totals-inner {
+    padding: 20px 24px;
+  }
+
+  .totals-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 640px) {
+    .totals-grid { grid-template-columns: 1fr; }
+  }
+
+  .total-block {
+    padding: 16px 20px;
+    border-right: 1px solid var(--border);
+    background: #fafbfc;
+  }
+  .total-block:last-child { border-right: none; }
+
+  .total-block-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--slate-light);
+    margin-bottom: 6px;
+  }
+
+  .total-block-value {
+    font-family: var(--mono);
+    font-size: 19px;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: -0.5px;
+  }
+
+  .total-block.accent {
+    background: var(--blue);
+  }
+  .total-block.accent .total-block-label { color: rgba(255,255,255,0.7); }
+  .total-block.accent .total-block-value { color: white; }
+
+  .totals-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .tva-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tva-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--slate);
+    white-space: nowrap;
+  }
+
+  .tva-select {
+    min-width: 160px;
+    font-weight: 600;
+    border-radius: 7px;
+    color: var(--blue);
+    background: var(--blue-dim);
+    border-color: #c7d8f7;
+  }
+
+  .pu-input.has-ref {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+    color: #15803d;
+  }
+  .pu-input.has-ref:focus {
+    background: white;
+    border-color: var(--blue);
+    color: #1e293b;
+  }
+  .ref-badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    background: #dcfce7;
+    color: #15803d;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-top: 3px;
+    border: 1px solid #bbf7d0;
+  }
+  @media print {
+    .topnav, .quick-bar, .table-footer, .totals-controls .nav-actions,
+    .delete-btn, .desc-toggle, .btn { display: none !important; }
+    body { background: white; font-size: 11px; }
+    .main { padding: 0; max-width: 100%; }
+    .project-card, .table-card, .totals-panel {
+      box-shadow: none !important;
+      border: 1px solid #ddd;
+      break-inside: avoid;
+    }
+    .bpu-table { min-width: 0; }
+    .totals-panel { position: static; }
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+
+  .project-card, .quick-bar, .table-card, .totals-panel {
+    animation: fadeIn 0.3s ease both;
+  }
+  .quick-bar { animation-delay: 0.05s; }
+  .table-card { animation-delay: 0.1s; }
+  .totals-panel { animation-delay: 0.15s; }
+
+  tr.new-row { animation: slideIn 0.2s ease both; }
+
+  .total-block-value.updated { animation: pop 0.3s ease; }
+
+  .btn-pdf {
+    background: linear-gradient(135deg, #e63946, #c1121f);
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(198,18,31,0.35);
+    border: none;
+  }
+  .btn-pdf:hover {
+    background: linear-gradient(135deg, #c1121f, #a00f1a);
+    box-shadow: 0 4px 14px rgba(198,18,31,0.45);
+    transform: translateY(-1px);
+  }
+  .btn-pdf:disabled {
+    opacity: 0.7;
+    cursor: wait;
+    transform: none;
+  }
+  .save-indicator {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.55);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+  .save-indicator.saving { color: #fbbf24; }
+  .save-indicator.saved  { color: #86efac; }
+
+  .save-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.7); }
+  }
+  .save-indicator.saving .save-dot { animation: pulse-dot 0.8s ease infinite; }
+
+  /* ── RESTORE BANNER ── */
+  .restore-banner {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: var(--radius);
+    padding: 12px 18px;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    animation: fadeIn 0.3s ease both;
+  }
+  .restore-banner-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #92400e;
+  }
+  .restore-banner-text span { font-size: 16px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #1e293b;
+    color: white;
+    padding: 10px 18px;
+    border-radius: 24px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 1000;
+    transition: transform 0.25s ease;
+    pointer-events: none;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .topnav { padding: 0 14px; }
+    .brand-badge { display: none; }
+    .main { padding: 14px 12px 130px; }
+    .project-card { padding: 14px 16px; }
+    .bpu-table { min-width: 750px; }
+    .totals-inner { padding: 14px 16px; }
+    .total-block-value { font-size: 15px; }
+    .nav-label { display: none; }
+  }
+
+  /* Scrollbar style */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
+</head>
+
+<body>
+
+<!-- ── TOP NAV ── -->
+<nav class="topnav">
+  <div class="brand">
+    <div class="brand-icon">🏗</div>
+    BuildQuant
+    <span class="brand-badge">BTPH · DZD</span>
+  </div>
+  <div class="nav-actions">
+    <div class="save-indicator" id="save-indicator">
+      <div class="save-dot"></div>
+      <span id="save-label">—</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="newProject()" title="Nouveau projet (efface les données locales)">
+      <span>📄</span> <span class="nav-label">Nouveau Projet</span>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="clearAll()">
+      <span>🗑</span> <span class="nav-label">Effacer tout</span>
+    </button>
+    <button class="btn btn-pdf btn-sm" onclick="downloadPDF()">
+      <span>📄</span> <span class="nav-label">Exporter PDF</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ── MAIN ── -->
+<div class="main">
+
+  <!-- Restore Banner (shown on load if saved data exists) -->
+  <div class="restore-banner" id="restore-banner" style="display:none;">
+    <div class="restore-banner-text">
+      <span>💾</span>
+      <span id="restore-banner-msg">Projet récupéré depuis votre dernière session.</span>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="dismissBanner()">OK, compris</button>
+  </div>
+
+  <!-- Project Header -->
+  <div class="project-card">
+    <div class="project-card-header">
+      <span class="section-label">📋 Informations du Projet</span>
+    </div>
+    <div class="project-fields">
+      <div class="field-group">
+        <label class="field-label">Intitulé du Projet</label>
+        <input type="text" id="proj-name" placeholder="Ex: Construction d'un immeuble R+4, Lot Maçonnerie…">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Maître d'Ouvrage / Client</label>
+        <input type="text" id="proj-client" placeholder="Ex: OPGI Alger, Particulier…">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Date</label>
+        <input type="date" id="proj-date">
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions Bar -->
+  <div class="quick-bar">
+    <div class="quick-bar-label">⚡ Ajout Rapide — Cliquez pour insérer un poste pré-rempli</div>
+    <div class="quick-scroll" id="quick-scroll">
+      <button class="quick-chip" onclick="addQuick('terrassement')">⛏ Terrassement</button>
+      <button class="quick-chip" onclick="addQuick('fondations')">🪨 Fondations</button>
+      <button class="quick-chip" onclick="addQuick('maconnerie')">🧱 Maçonnerie</button>
+      <button class="quick-chip" onclick="addQuick('enduits')">🪣 Enduits</button>
+      <button class="quick-chip" onclick="addQuick('peinture')">🎨 Peinture</button>
+      <button class="quick-chip" onclick="addQuick('carrelage')">⬜ Carrelage</button>
+      <button class="quick-chip" onclick="addQuick('charpente')">🏠 Charpente</button>
+      <button class="quick-chip" onclick="addQuick('etancheite')">💧 Étanchéité</button>
+      <div class="quick-divider"></div>
+      <button class="quick-chip vrd" onclick="addQuick('assainissement')">🌊 Assainissement</button>
+      <button class="quick-chip vrd" onclick="addQuick('aep')">🚰 AEP</button>
+      <button class="quick-chip vrd" onclick="addQuick('bordure_t1')">↔ Bordure T1</button>
+      <button class="quick-chip vrd" onclick="addQuick('bordure_t2')">↔ Bordure T2</button>
+      <button class="quick-chip vrd" onclick="addQuick('bordure_cs')">↔ Bordure CS</button>
+      <button class="quick-chip vrd" onclick="addQuick('eclairage')">💡 Éclairage Public</button>
+      <button class="quick-chip vrd" onclick="addQuick('enrobe')">🛣 Revêtement Enrobé</button>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="table-header">
+      <div class="table-title">
+        📊 Bordereau des Prix Unitaires / DQE
+        <span class="row-count-badge" id="row-count">0 poste</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="addRow()">+ Ajouter un poste</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="bpu-table">
+        <thead>
+          <tr>
+            <th class="center" style="width:48px">N°</th>
+            <th style="min-width:240px">Désignation des travaux</th>
+            <th class="center" style="width:90px">Unité</th>
+            <th class="right" style="width:110px">Quantité</th>
+            <th class="right" style="width:140px">Prix Unitaire (DZD)</th>
+            <th class="right" style="width:150px">Total HT (DZD)</th>
+            <th class="center" style="width:44px"></th>
+          </tr>
+        </thead>
+        <tbody id="bpu-body">
+          <!-- rows injected here -->
+        </tbody>
+      </table>
+    </div>
+
+    <div id="empty-state" class="empty-state">
+      <div class="empty-state-icon">📐</div>
+      <div class="empty-state-title">Aucun poste ajouté</div>
+      <div class="empty-state-sub">Cliquez sur « Ajouter un poste » ou utilisez les raccourcis ci-dessus</div>
+    </div>
+
+    <div class="table-footer">
+      <button class="btn btn-blue btn-sm" onclick="addRow()">+ Nouveau poste</button>
+      <button class="btn btn-outline btn-sm" onclick="addSection()">📁 Section / Chapitre</button>
+    </div>
+  </div>
+
+  <!-- Totals Panel -->
+  <div class="totals-panel">
+    <div class="totals-inner">
+      <div class="totals-grid">
+        <div class="total-block">
+          <div class="total-block-label">Total Général HT</div>
+          <div class="total-block-value" id="total-ht">0,00 DZD</div>
+        </div>
+        <div class="total-block">
+          <div class="total-block-label">TVA (<span id="tva-pct-label">19%</span>)</div>
+          <div class="total-block-value" id="total-tva">0,00 DZD</div>
+        </div>
+        <div class="total-block accent">
+          <div class="total-block-label">Total TTC</div>
+          <div class="total-block-value" id="total-ttc">0,00 DZD</div>
+        </div>
+      </div>
+      <div class="totals-controls">
+        <div class="tva-control">
+          <span class="tva-label">Taux de TVA :</span>
+          <select class="tva-select" id="tva-select" onchange="recalcTotals()">
+            <option value="0">Exonéré (0%)</option>
+            <option value="9">TVA Réduite — 9% (Logements sociaux)</option>
+            <option value="19" selected>TVA Normale — 19% (Standard)</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="newProject()">📄 Nouveau Projet</button>
+          <button class="btn btn-pdf btn-sm" onclick="downloadPDF()">📄 Exporter PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──
+let rows = [];
+let rowIdCounter = 0;
+
+const UNITS = ['m', 'm²', 'm³', 'ml', 'kg', 'Tonne', 'U', 'Forfait', 'h', 'j'];
+
+// ── QUICK TASK TEMPLATES — with unit prices (DZD, Algeria reference 2024) ──
+// pu = Prix Unitaire indicatif. User can edit freely after insertion.
+const TASKS = {
+  terrassement: {
+    desig: 'Terrassement général en déblai',
+    desc: `Terrassement général en déblai et mis en dépôt de tous les matériaux, y compris fouilles en grande masse et en rigoles, pour toute profondeur, dans toutes natures de terrains, y compris:\n- Evacuation des matériaux excédentaires\n- Profilage et réglage des talus\n- Compactage du fond de fouille`,
+    unit: 'm³',
+    pu: 500
+  },
+  fondations: {
+    desig: 'Béton armé pour semelles de fondation',
+    desc: `Fourniture et mise en place de béton armé dosé à 350 kg/m³ de ciment CPA 325 pour la réalisation des semelles de fondation, y compris:\n- Coffrage soigné toutes faces\n- Armatures en acier FeE 400\n- Vibration et cure du béton\n- Décoffrage`,
+    unit: 'm³',
+    pu: 15000
+  },
+  maconnerie: {
+    desig: 'Maçonnerie en parpaings creux 20x20x40',
+    desc: `Exécution de murs en maçonnerie de parpaings creux 20x20x40 cm, hourdés au mortier de ciment dosé à 250 kg/m³, y compris:\n- Fourniture des parpaings NF\n- Mortier de pose\n- Chaînages verticaux et horizontaux\n- Echafaudages nécessaires`,
+    unit: 'm²',
+    pu: 1200
+  },
+  enduits: {
+    desig: 'Enduit de façade au mortier de ciment bâtard',
+    desc: `Enduit extérieur et intérieur au mortier de ciment bâtard dosé à 300 kg/m³, en deux couches, y compris:\n- Gobetis d'accrochage\n- Corps d'enduit\n- Finition lissée ou talochée selon désignation\n- Reprise des fissures et arêtes`,
+    unit: 'm²',
+    pu: 850
+  },
+  peinture: {
+    desig: 'Peinture vinylique intérieure, deux couches',
+    desc: `Application de peinture vinylique de qualité supérieure sur murs et plafonds, y compris:\n- Préparation des supports (ponçage, rebouchage)\n- Impression primaire\n- Deux couches de finition\n- Protection des ouvrages voisins`,
+    unit: 'm²',
+    pu: 600
+  },
+  carrelage: {
+    desig: 'Carrelage sol en grès cérame 60x60',
+    desc: `Fourniture et pose de carrelage sol en grès cérame émaillé 60x60 cm, qualité première, y compris:\n- Lit de mortier-colle flexible\n- Joints de 3 mm avec coulis époxy\n- Plinthes assorties h=10 cm\n- Protection provisoire après pose`,
+    unit: 'm²',
+    pu: 2800
+  },
+  charpente: {
+    desig: 'Charpente métallique légère pour couverture',
+    desc: `Fourniture et pose de charpente métallique légère en profilés IPE / HEA, y compris:\n- Calcul de stabilité\n- Traitement anti-corrosion (primaire époxydique)\n- Boulonnerie et éléments de fixation\n- Levage et mise en place`,
+    unit: 'kg',
+    pu: 320
+  },
+  etancheite: {
+    desig: 'Étanchéité bicouche élastomère SBS',
+    desc: `Réalisation d'étanchéité bicouche élastomère à base de bitume modifié SBS, y compris:\n- Préparation et primaire d'accrochage\n- Première couche d'émulsion\n- Deuxième couche armée\n- Relevés sur acrotères h=20 cm minimum\n- Protection gravillonnée`,
+    unit: 'm²',
+    pu: 1600
+  },
+  assainissement: {
+    desig: "Réseau d'assainissement — Pose de canalisation PVC Ø 200 mm",
+    desc: `Fourniture et pose en tranchée de canalisation d'assainissement en PVC rigide Ø 200 mm série assainissement NF, y compris:\n- Fouilles en tranchées profilées et blindées si nécessaire\n- Lit de pose en sable 0/4 ep. 10 cm\n- Remblaiement soigné par couches compactées\n- Cunettes et regards de visite tous les 50 m\n- Essais d'étanchéité et mise en service`,
+    unit: 'ml',
+    pu: 2500
+  },
+  aep: {
+    desig: 'AEP — Conduite distribution eau potable PEHD Ø 110 mm PE100',
+    desc: `Fourniture et pose en tranchée de conduite d'eau potable en PEHD Ø 110 mm PN 16, PE100 conforme NF EN 12201, y compris:\n- Fouilles en tranchées\n- Lit de pose en sable\n- Raccordements par soudure bout-à-bout\n- Vannes d'arrêt et bouches à clé\n- Tests de pression (1,5 x PN)\n- Déchlorination et mise en service`,
+    unit: 'ml',
+    pu: 3200
+  },
+  bordure_t1: {
+    desig: 'Fourniture et pose de bordures béton type T1',
+    desc: `Fourniture et pose de bordures de trottoir en béton vibré type T1 (100x100x500 mm), conforme NF P 98-303, y compris:\n- Fouilles et terrassements\n- Béton de fondation dosé à 250 kg/m³\n- Jointoiement au mortier de ciment\n- Manutention et calage`,
+    unit: 'ml',
+    pu: 1400
+  },
+  bordure_t2: {
+    desig: 'Fourniture et pose de bordures béton type T2',
+    desc: `Fourniture et pose de bordures de trottoir en béton vibré type T2 (150x250x500 mm), conforme NF P 98-303, y compris:\n- Fouilles et terrassements\n- Béton de fondation dosé à 250 kg/m³\n- Jointoiement au mortier de ciment`,
+    unit: 'ml',
+    pu: 1800
+  },
+  bordure_cs: {
+    desig: 'Fourniture et pose de caniveaux béton type CS',
+    desc: `Fourniture et pose de caniveaux en béton vibré type CS (500x200 mm), pour la collecte des eaux pluviales de chaussée, y compris:\n- Fouilles et fond de forme\n- Béton de fondation\n- Joints de dilatation tous les 10 m\n- Raccordement au réseau d'évacuation`,
+    unit: 'ml',
+    pu: 2200
+  },
+  eclairage: {
+    desig: 'Éclairage public — Candélabre simple console H=8m avec luminaire LED 100W',
+    desc: `Fourniture et pose de candélabre en acier galvanisé simple console H=8m, y compris:\n- Luminaire LED 100W - 12000 lm, IP65, IK10\n- Massif de fondation en béton armé\n- Câblage BTA depuis armoire de commande\n- Mise à la terre\n- Mise en service et essais`,
+    unit: 'U',
+    pu: 95000
+  },
+  enrobe: {
+    desig: 'Revêtement en enrobé bitumineux — Couche de roulement BB 0/10, ép. 5 cm',
+    desc: `Fourniture et mise en œuvre d'enrobé bitumineux à chaud, couche de roulement BB 0/10, épaisseur compactée 5 cm, conforme NF EN 13108-1, y compris:\n- Répandage à la finisseuse\n- Compactage au rouleau vibrant et pneumatique\n- Essais de compactage (tensiomètre)\n- Imprégnation en couche d'accrochage (ECR 60)\n- Marquage routier`,
+    unit: 'm²',
+    pu: 1850
+  }
+};
+
+// ── ADD ROW ──
+function addRow(template = null) {
+  const id = ++rowIdCounter;
+  const row = {
+    id,
+    desig: template ? template.desig : '',
+    desc: template ? template.desc : '',
+    unit: template ? template.unit : 'm²',
+    qty: '',
+    pu: (template && template.pu) ? template.pu : '',
+    hasDesc: template ? true : false,
+    isSection: false
+  };
+  rows.push(row);
+  renderRows();
+  updateRowCount();
+  recalcTotals();
+  saveProject();
+
+  // Focus on the new row's designation input
+  setTimeout(() => {
+    const input = document.querySelector(`[data-id="${id}"] .desig-input`);
+    if (input) input.focus();
+  }, 50);
+
+  showToast(template ? `✓ Poste "${template.desig.split('—')[0].trim()}" ajouté` : '+ Nouveau poste ajouté');
+}
+
+function addQuick(key) {
+  const t = TASKS[key];
+  if (t) addRow(t);
+}
+
+function addSection() {
+  const id = ++rowIdCounter;
+  rows.push({ id, isSection: true, desig: 'CHAPITRE —', desc: '', unit: '', qty: '', pu: '' });
+  renderRows();
+  updateRowCount();
+  saveProject();
+  setTimeout(() => {
+    const input = document.querySelector(`[data-id="${id}"] .section-input`);
+    if (input) input.focus();
+  }, 50);
+}
+
+// ── DELETE ROW ──
+function deleteRow(id) {
+  rows = rows.filter(r => r.id !== id);
+  renderRows();
+  updateRowCount();
+  recalcTotals();
+  saveProject();
+}
+
+// ── UPDATE VALUE ──
+function updateRow(id, field, value) {
+  const row = rows.find(r => r.id === id);
+  if (!row) return;
+  row[field] = value;
+  if (field === 'qty' || field === 'pu') recalcTotals();
+  saveProject();
+}
+
+// ── TOGGLE DESCRIPTION ──
+function toggleDesc(id) {
+  const row = rows.find(r => r.id === id);
+  if (!row) return;
+  row.hasDesc = !row.hasDesc;
+  const area = document.querySelector(`[data-id="${id}"] .desc-area`);
+  const btn = document.querySelector(`[data-id="${id}"] .desc-toggle`);
+  if (area) area.classList.toggle('open', row.hasDesc);
+  if (btn) btn.innerHTML = row.hasDesc ? '▲ Masquer description' : '▼ Description technique';
+}
+
+// ── RENDER ROWS ──
+function renderRows() {
+  const tbody = document.getElementById('bpu-body');
+  const empty = document.getElementById('empty-state');
+  const dataRows = rows.filter(r => !r.isSection);
+
+  if (rows.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  let num = 0;
+  tbody.innerHTML = rows.map(row => {
+    if (row.isSection) {
+      return `
+      <tr data-id="${row.id}" style="background:#f1f5f9;">
+        <td colspan="7" style="padding:8px 14px;">
+          <input type="text" class="section-input" style="font-weight:700;font-size:13px;letter-spacing:0.3px;background:transparent;border:none;color:#1e293b;width:100%;padding:2px 4px;"
+            value="${esc(row.desig)}"
+            onchange="updateRow(${row.id},'desig',this.value)"
+            placeholder="Titre de chapitre…">
+        </td>
+      </tr>`;
+    }
+    num++;
+    const total = calcRowTotal(row);
+    return `
+    <tr data-id="${row.id}" class="new-row">
+      <td class="center"><span class="row-num">${num}</span></td>
+      <td class="desig-cell">
+        <input type="text" class="desig-input"
+          value="${esc(row.desig)}"
+          placeholder="Désignation du poste…"
+          onchange="updateRow(${row.id},'desig',this.value)">
+        <button class="desc-toggle" onclick="toggleDesc(${row.id})">
+          ${row.hasDesc ? '▲ Masquer description' : '▼ Description technique'}
+        </button>
+        <div class="desc-area ${row.hasDesc ? 'open' : ''}">
+          <textarea placeholder="Description technique détaillée, spécifications contractuelles…"
+            onchange="updateRow(${row.id},'desc',this.value)">${esc(row.desc)}</textarea>
+        </div>
+      </td>
+      <td>
+        <select class="unit-select" onchange="updateRow(${row.id},'unit',this.value)">
+          ${UNITS.map(u => `<option value="${u}" ${row.unit===u?'selected':''}>${u}</option>`).join('')}
+        </select>
+      </td>
+      <td>
+        <input type="number" class="qty-input" min="0" step="any"
+          value="${row.qty}"
+          placeholder="0"
+          oninput="updateRow(${row.id},'qty',this.value);updateTotal(${row.id})">
+      </td>
+      <td>
+        <input type="number" class="pu-input ${row.pu ? 'has-ref' : ''}" min="0" step="any"
+          value="${row.pu}"
+          placeholder="0,00"
+          title="${row.pu ? 'Prix indicatif de référence Algérie — modifiable' : ''}"
+          oninput="updateRow(${row.id},'pu',this.value);updateTotal(${row.id});this.classList.remove('has-ref')">
+        ${row.pu ? '<span class="ref-badge" title="Prix de référence Algeria 2024">Réf.</span>' : ''}
+      </td>
+      <td><span class="total-cell" id="row-total-${row.id}">${fmtNum(total)}</span></td>
+      <td class="center"><button class="delete-btn" onclick="deleteRow(${row.id})" title="Supprimer">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateTotal(id) {
+  const row = rows.find(r => r.id === id);
+  if (!row) return;
+  const el = document.getElementById(`row-total-${id}`);
+  if (el) {
+    el.textContent = fmtNum(calcRowTotal(row));
+    el.classList.remove('updated');
+    void el.offsetWidth;
+    el.classList.add('updated');
+  }
+  recalcTotals();
+}
+
+function calcRowTotal(row) {
+  const q = parseFloat(row.qty) || 0;
+  const p = parseFloat(row.pu) || 0;
+  return q * p;
+}
+
+// ── TOTALS ──
+function recalcTotals() {
+  const ht = rows.reduce((s, r) => s + calcRowTotal(r), 0);
+  const tvaRate = parseFloat(document.getElementById('tva-select').value) / 100;
+  const tva = ht * tvaRate;
+  const ttc = ht + tva;
+  const pct = document.getElementById('tva-select').value;
+
+  document.getElementById('total-ht').textContent = fmtDZD(ht);
+  document.getElementById('total-tva').textContent = fmtDZD(tva);
+  document.getElementById('total-ttc').textContent = fmtDZD(ttc);
+  document.getElementById('tva-pct-label').textContent = pct + '%';
+}
+
+function updateRowCount() {
+  const n = rows.filter(r => !r.isSection).length;
+  document.getElementById('row-count').textContent = n + (n > 1 ? ' postes' : ' poste');
+}
+
+// ── HELPERS ──
+function fmtNum(n) {
+  if (!n && n !== 0) return '—';
+  return new Intl.NumberFormat('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+function fmtDZD(n) {
+  return new Intl.NumberFormat('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + ' DZD';
+}
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── CLEAR ALL (table rows only, keeps project info) ──
+function clearAll() {
+  if (rows.length === 0) return;
+  if (!confirm('Effacer tous les postes du tableau ? (Les informations du projet sont conservées)')) return;
+  rows = [];
+  rowIdCounter = 0;
+  renderRows();
+  updateRowCount();
+  recalcTotals();
+  saveProject();
+  showToast('🗑 Tableau effacé');
+}
+
+// ── DOWNLOAD PDF (html2pdf.js) ──
+async function downloadPDF() {
+  if (rows.length === 0) {
+    showToast('⚠ Ajoutez au moins un poste avant d\'exporter');
+    return;
+  }
+
+  // ── Gather data ──
+  const proj    = document.getElementById('proj-name').value   || 'Projet sans titre';
+  const client  = document.getElementById('proj-client').value || 'N/A';
+  const dateRaw = document.getElementById('proj-date').value;
+  const dateStr = dateRaw
+    ? new Date(dateRaw).toLocaleDateString('fr-DZ', {day:'2-digit',month:'long',year:'numeric'})
+    : new Date().toLocaleDateString('fr-DZ', {day:'2-digit',month:'long',year:'numeric'});
+  const tvaRate  = document.getElementById('tva-select').value;
+  const tvaLabel = tvaRate === '9'  ? 'TVA Réduite (9%) — Logements Sociaux'
+                 : tvaRate === '19' ? 'TVA Normale (19%)'
+                 :                    'Exonéré de TVA (0%)';
+  const ht  = rows.reduce((s, r) => s + calcRowTotal(r), 0);
+  const tva = ht * (parseFloat(tvaRate) / 100);
+  const ttc = ht + tva;
+  const generatedOn = new Date().toLocaleDateString('fr-DZ', {day:'2-digit',month:'long',year:'numeric'});
+  const refNum = 'BQ-' + Date.now().toString().slice(-6);
+
+  // ── Build table rows HTML ──
+  let num = 0;
+  const tableRowsHtml = rows.map(row => {
+    if (row.isSection) {
+      return `
+        <tr class="section-row">
+          <td colspan="6" class="section-cell">${escPdf(row.desig)}</td>
+        </tr>`;
+    }
+    num++;
+    const total = calcRowTotal(row);
+    const isEven = num % 2 === 0;
+    return `
+      <tr class="${isEven ? 'even-row' : ''}">
+        <td class="col-num">${num}</td>
+        <td class="col-desig">
+          <div class="desig-text">${escPdf(row.desig) || '<em>Sans désignation</em>'}</div>
+          ${row.desc ? `<div class="desc-text">${escPdf(row.desc).replace(/\n/g,'<br>')}</div>` : ''}
+        </td>
+        <td class="col-unit">${escPdf(row.unit)}</td>
+        <td class="col-qty">${fmtNum(parseFloat(row.qty)||0)}</td>
+        <td class="col-pu">${fmtNum(parseFloat(row.pu)||0)}</td>
+        <td class="col-total">${fmtNum(total)}</td>
+      </tr>`;
+  }).join('');
+
+  // ── Full PDF HTML document ──
+  const pdfHtml = `
+<div id="pdf-root" style="font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:10.5px;color:#1a2332;line-height:1.45;background:#fff;width:210mm;margin:0 auto;">
+
+  <!-- ══ HEADER BAND ══ -->
+  <div style="background:#004AAD;color:#fff;padding:0;margin-bottom:0;position:relative;overflow:hidden;">
+    <!-- Decorative diagonal stripe -->
+    <div style="position:absolute;top:0;right:0;width:120px;height:100%;background:rgba(255,255,255,0.07);transform:skewX(-15deg);transform-origin:top right;"></div>
+    <div style="position:absolute;top:0;right:30px;width:60px;height:100%;background:rgba(255,255,255,0.05);transform:skewX(-15deg);"></div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px 14px;">
+      <!-- Brand -->
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;">
+          <div style="width:36px;height:36px;background:rgba(255,255,255,0.18);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🏗</div>
+          <div>
+            <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;line-height:1;">BuildQuant</div>
+            <div style="font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;opacity:0.75;margin-top:1px;">Plateforme BTPH · Algérie</div>
+          </div>
+        </div>
+      </div>
+      <!-- Doc type + ref -->
+      <div style="text-align:right;">
+        <div style="font-size:13px;font-weight:700;letter-spacing:0.3px;background:rgba(255,255,255,0.15);padding:5px 12px;border-radius:5px;display:inline-block;">DEVIS QUANTITATIF ESTIMATIF</div>
+        <div style="font-size:9px;opacity:0.7;margin-top:5px;">BPU / DQE &nbsp;·&nbsp; Réf : ${refNum}</div>
+      </div>
+    </div>
+
+    <!-- Blue bottom accent line -->
+    <div style="height:4px;background:linear-gradient(90deg,#7eb8ff,#fff,#7eb8ff);opacity:0.4;"></div>
+  </div>
+
+  <!-- ══ META INFO BAR ══ -->
+  <div style="background:#f0f4fa;border:1px solid #c7d6ee;border-top:none;padding:10px 24px;display:flex;gap:0;margin-bottom:16px;">
+    <div style="flex:2;border-right:1px solid #d1ddf0;padding-right:16px;margin-right:16px;">
+      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#7a9cc0;margin-bottom:2px;">Intitulé du Projet</div>
+      <div style="font-size:11.5px;font-weight:700;color:#1a2332;">${escPdf(proj)}</div>
+    </div>
+    <div style="flex:1.5;border-right:1px solid #d1ddf0;padding-right:16px;margin-right:16px;">
+      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#7a9cc0;margin-bottom:2px;">Maître d'Ouvrage</div>
+      <div style="font-size:11px;font-weight:600;color:#1a2332;">${escPdf(client)}</div>
+    </div>
+    <div style="flex:1;border-right:1px solid #d1ddf0;padding-right:16px;margin-right:16px;">
+      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#7a9cc0;margin-bottom:2px;">Date du Devis</div>
+      <div style="font-size:11px;font-weight:600;color:#1a2332;">${dateStr}</div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#7a9cc0;margin-bottom:2px;">Régime TVA</div>
+      <div style="font-size:10px;font-weight:600;color:#004AAD;">${tvaLabel}</div>
+    </div>
+  </div>
+
+  <!-- ══ SECTION TITLE ══ -->
+  <div style="display:flex;align-items:center;gap:8px;padding:0 24px;margin-bottom:8px;">
+    <div style="width:4px;height:16px;background:#004AAD;border-radius:2px;flex-shrink:0;"></div>
+    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#004AAD;">Bordereau des Prix Unitaires</span>
+    <div style="flex:1;height:1px;background:#d1ddf0;"></div>
+  </div>
+
+  <!-- ══ BPU TABLE ══ -->
+  <div style="padding:0 24px;margin-bottom:20px;">
+    <table style="width:100%;border-collapse:collapse;border:1.5px solid #b8cce4;border-radius:6px;overflow:hidden;font-size:9.5px;">
+      <thead>
+        <tr style="background:#004AAD;color:#fff;">
+          <th style="padding:8px 6px;text-align:center;width:30px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">N°</th>
+          <th style="padding:8px 10px;text-align:left;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">DÉSIGNATION DES TRAVAUX</th>
+          <th style="padding:8px 6px;text-align:center;width:45px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">UNITÉ</th>
+          <th style="padding:8px 8px;text-align:right;width:65px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">QUANTITÉ</th>
+          <th style="padding:8px 8px;text-align:right;width:90px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">P.U. HT (DZD)</th>
+          <th style="padding:8px 8px;text-align:right;width:95px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;">TOTAL HT (DZD)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${tableRowsHtml}
+        <!-- Subtotal spacer row -->
+        <tr style="background:#f7faff;">
+          <td colspan="6" style="padding:4px 10px;border-top:2px solid #004AAD;"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ TOTALS SUMMARY ══ -->
+  <div style="padding:0 24px;margin-bottom:22px;display:flex;justify-content:flex-end;">
+    <div style="width:320px;border:1.5px solid #b8cce4;border-radius:6px;overflow:hidden;">
+      <!-- Header -->
+      <div style="background:#004AAD;color:#fff;padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">Récapitulatif Financier</div>
+      <!-- HT row -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #d1ddf0;background:#fff;">
+        <span style="font-size:10px;color:#475569;font-weight:500;">Total des travaux HT</span>
+        <span style="font-size:11px;font-weight:700;color:#1a2332;font-family:monospace;">${fmtNum(ht)} DZD</span>
+      </div>
+      <!-- TVA row -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #d1ddf0;background:#fff;">
+        <span style="font-size:10px;color:#475569;font-weight:500;">TVA (${tvaRate}%)</span>
+        <span style="font-size:11px;font-weight:700;color:#475569;font-family:monospace;">${fmtNum(tva)} DZD</span>
+      </div>
+      <!-- TTC row — highlighted -->
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#004AAD;">
+        <span style="font-size:11px;color:#fff;font-weight:700;letter-spacing:0.3px;">MONTANT TOTAL TTC</span>
+        <span style="font-size:14px;font-weight:800;color:#fff;font-family:monospace;letter-spacing:-0.3px;">${fmtNum(ttc)} DZD</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SIGNATURE ZONE ══ -->
+  <div style="padding:0 24px;margin-bottom:20px;display:flex;gap:16px;">
+    <div style="flex:1;border:1px solid #d1ddf0;border-radius:5px;padding:10px 14px;min-height:60px;">
+      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:6px;">Lu et approuvé — Maître d'Ouvrage</div>
+      <div style="font-size:8px;color:#cbd5e1;">(Signature et cachet)</div>
+    </div>
+    <div style="flex:1;border:1px solid #d1ddf0;border-radius:5px;padding:10px 14px;min-height:60px;">
+      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:6px;">Établi par — Entrepreneur / BET</div>
+      <div style="font-size:8px;color:#cbd5e1;">(Signature et cachet)</div>
+    </div>
+  </div>
+
+  <!-- ══ FOOTER ══ -->
+  <div style="margin:0 24px;padding-top:10px;border-top:1.5px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-size:8px;color:#94a3b8;">
+      Document généré par <strong style="color:#004AAD;">BuildQuant</strong> — Plateforme de Métrés BTPH &nbsp;·&nbsp; Algérie
+    </div>
+    <div style="font-size:8px;color:#94a3b8;">
+      Généré le ${generatedOn} &nbsp;·&nbsp; Réf : ${refNum}
+    </div>
+  </div>
+
+</div>
+
+<style>
+  .section-row .section-cell {
+    background: #dbeafe;
+    padding: 7px 10px;
+    font-weight: 800;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #1e40af;
+    border-top: 1px solid #bfdbfe;
+    border-bottom: 1px solid #bfdbfe;
+  }
+  .even-row td { background: #f8faff; }
+  .col-num   { padding:7px 6px; text-align:center; color:#94a3b8; font-size:9px; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; vertical-align:top; }
+  .col-desig { padding:7px 10px; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; vertical-align:top; }
+  .col-unit  { padding:7px 6px; text-align:center; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; font-weight:600; color:#475569; vertical-align:top; }
+  .col-qty   { padding:7px 8px; text-align:right; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; font-family:monospace; vertical-align:top; }
+  .col-pu    { padding:7px 8px; text-align:right; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; font-family:monospace; vertical-align:top; }
+  .col-total { padding:7px 8px; text-align:right; border-bottom:1px solid #e2e8f0; font-family:monospace; font-weight:700; color:#004AAD; vertical-align:top; }
+  .desig-text { font-weight:600; color:#1a2332; font-size:9.5px; }
+  .desc-text  { font-size:8.5px; color:#64748b; margin-top:3px; line-height:1.5; }
+</style>
+`;
+
+  // ── Inject hidden render container ──
+  let container = document.getElementById('pdf-render-zone');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'pdf-render-zone';
+    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff;z-index:-1;';
+    document.body.appendChild(container);
+  }
+  container.innerHTML = pdfHtml;
+
+  // ── Show loading state on button ──
+  const btns = document.querySelectorAll('[onclick="downloadPDF()"]');
+  btns.forEach(b => { b._orig = b.innerHTML; b.innerHTML = '⏳ Génération…'; b.disabled = true; });
+  showToast('⏳ Génération du PDF en cours…');
+
+  const filename = `BuildQuant_DQE_${proj.replace(/[^a-zA-Z0-9\u00C0-\u017E]/g,'_').slice(0,40)}_${refNum}.pdf`;
+
+  const opt = {
+    margin:      [8, 0, 8, 0],   // top, right, bottom, left in mm
+    filename,
+    image:       { type: 'jpeg', quality: 0.97 },
+    html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
+    jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak:   { mode: ['avoid-all', 'css', 'legacy'] }
+  };
+
+  try {
+    await html2pdf().set(opt).from(container.querySelector('#pdf-root')).save();
+    showToast('✅ PDF téléchargé avec succès !');
+  } catch(e) {
+    showToast('⚠ Erreur lors de la génération du PDF');
+    console.error(e);
+  } finally {
+    btns.forEach(b => { b.innerHTML = b._orig; b.disabled = false; });
+  }
+}
+
+// helper — escape for inside PDF HTML strings
+function escPdf(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── TOAST ──
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── PWA INSTALL ──
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showToast('📲 Vous pouvez installer BuildQuant sur votre écran d\'accueil');
+});
+
+// ══════════════════════════════════════════
+// ── LOCAL STORAGE — PERSISTENCE ENGINE ──
+// ══════════════════════════════════════════
+const LS_KEY = 'buildquant_project_v2';
+let saveTimer = null;
+
+function saveProject() {
+  // Show "saving…" indicator
+  setSaveIndicator('saving', 'Sauvegarde…');
+
+  // Debounce: wait 600ms after last change before writing
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      const payload = {
+        savedAt: new Date().toISOString(),
+        projName:   document.getElementById('proj-name').value,
+        projClient: document.getElementById('proj-client').value,
+        projDate:   document.getElementById('proj-date').value,
+        tvaRate:    document.getElementById('tva-select').value,
+        rowIdCounter,
+        rows
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(payload));
+      setSaveIndicator('saved', 'Sauvegardé');
+      // Fade back to idle after 3s
+      setTimeout(() => setSaveIndicator('idle', ''), 3000);
+    } catch(e) {
+      setSaveIndicator('idle', '');
+      showToast('⚠ Impossible de sauvegarder (stockage plein ?)');
+    }
+  }, 600);
+}
+
+function loadProject() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data || !data.rows) return false;
+
+    // Restore project fields
+    document.getElementById('proj-name').value   = data.projName   || '';
+    document.getElementById('proj-client').value = data.projClient || '';
+    document.getElementById('proj-date').value   = data.projDate   || new Date().toISOString().split('T')[0];
+    document.getElementById('tva-select').value  = data.tvaRate    || '19';
+
+    // Restore rows
+    rows = data.rows || [];
+    rowIdCounter = data.rowIdCounter || rows.length;
+
+    // Show restore banner
+    const when = data.savedAt
+      ? new Date(data.savedAt).toLocaleString('fr-DZ', { dateStyle:'short', timeStyle:'short' })
+      : 'session précédente';
+    const projLabel = data.projName ? ` « ${data.projName} »` : '';
+    document.getElementById('restore-banner-msg').textContent =
+      `Projet${projLabel} restauré depuis votre dernière session (${when}).`;
+    document.getElementById('restore-banner').style.display = 'flex';
+
+    setSaveIndicator('saved', 'Chargé');
+    setTimeout(() => setSaveIndicator('idle', ''), 3000);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function clearStorage() {
+  localStorage.removeItem(LS_KEY);
+}
+
+function setSaveIndicator(state, label) {
+  const el  = document.getElementById('save-indicator');
+  const lbl = document.getElementById('save-label');
+  el.className = 'save-indicator' + (state !== 'idle' ? ' ' + state : '');
+  lbl.textContent = label;
+}
+
+function dismissBanner() {
+  const b = document.getElementById('restore-banner');
+  b.style.opacity = '0';
+  b.style.transition = 'opacity 0.3s';
+  setTimeout(() => b.style.display = 'none', 300);
+}
+
+// ── PROJECT FIELD LISTENERS — auto-save on every keystroke ──
+['proj-name','proj-client','proj-date'].forEach(id => {
+  document.getElementById(id).addEventListener('input', saveProject);
+  document.getElementById(id).addEventListener('change', saveProject);
+});
+document.getElementById('tva-select').addEventListener('change', () => {
+  recalcTotals();
+  saveProject();
+});
+
+// ── NEW PROJECT ──
+function newProject() {
+  const hasData = rows.length > 0
+    || document.getElementById('proj-name').value
+    || document.getElementById('proj-client').value;
+
+  if (hasData) {
+    const ok = confirm(
+      '📄 Nouveau Projet\n\n' +
+      'Cette action effacera le projet en cours ET supprimera les données sauvegardées dans le navigateur.\n\n' +
+      'Souhaitez-vous continuer ?'
+    );
+    if (!ok) return;
+  }
+
+  // Clear everything
+  rows = [];
+  rowIdCounter = 0;
+  document.getElementById('proj-name').value   = '';
+  document.getElementById('proj-client').value = '';
+  document.getElementById('proj-date').value   = new Date().toISOString().split('T')[0];
+  document.getElementById('tva-select').value  = '19';
+  document.getElementById('restore-banner').style.display = 'none';
+
+  clearStorage();
+  renderRows();
+  updateRowCount();
+  recalcTotals();
+  setSaveIndicator('idle', '');
+  showToast('📄 Nouveau projet créé — données réinitialisées');
+}
+
+// ── INIT ──
+const restored = loadProject();
+if (!restored) {
+  document.getElementById('proj-date').value = new Date().toISOString().split('T')[0];
+}
+renderRows();
+updateRowCount();
+recalcTotals();
+</script>
+</body>
+</html>
