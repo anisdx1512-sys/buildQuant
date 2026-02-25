@@ -516,10 +516,6 @@
     margin-bottom: 16px;
   }
 
-  @media (max-width: 640px) {
-    .totals-grid { grid-template-columns: 1fr; }
-  }
-
   .total-block {
     padding: 16px 20px;
     border-right: 1px solid var(--border);
@@ -577,6 +573,110 @@
     color: var(--blue);
     background: var(--blue-dim);
     border-color: #c7d8f7;
+  }
+
+  /* ══════════════════════════════════════════════
+     MOBILE RESPONSIVE — Summary / Totals Panel
+     @media (max-width: 600px)
+  ══════════════════════════════════════════════ */
+  @media (max-width: 600px) {
+
+    /* 1 ── TOTALS PANEL — compact padding */
+    .totals-panel {
+      position: static;        /* un-stick on mobile so it doesn't eat the screen */
+      border-radius: var(--radius);
+      bottom: auto;
+    }
+    .totals-inner {
+      padding: 12px 14px;
+    }
+
+    /* 2 ── GRID — 2 columns on mobile: HT + TVA side-by-side, TTC full-width below */
+    .totals-grid {
+      grid-template-columns: 1fr 1fr;
+      margin-bottom: 12px;
+    }
+    /* TTC block spans both columns */
+    .total-block.accent {
+      grid-column: 1 / -1;
+      border-right: none;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      /* Compact TTC row — label and value side-by-side */
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 14px;
+    }
+    .total-block.accent .total-block-label {
+      margin-bottom: 0;
+      font-size: 10px;
+    }
+    .total-block.accent .total-block-value {
+      font-size: 16px;  /* largest value gets a bit more weight */
+    }
+
+    /* 3 ── HT and TVA blocks — compact */
+    .total-block {
+      padding: 10px 12px;
+    }
+    .total-block-label {
+      font-size: 9.5px;
+      margin-bottom: 3px;
+      letter-spacing: 0.4px;
+    }
+    .total-block-value {
+      font-size: 13px;   /* reduced from 19px desktop */
+      letter-spacing: -0.3px;
+    }
+
+    /* 4 ── CONTROLS ROW — stack TVA on top, buttons in a row below */
+    .totals-controls {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    /* TVA control: label + dropdown on same line, dropdown fills remaining space */
+    .tva-control {
+      width: 100%;
+      gap: 8px;
+    }
+    .tva-label {
+      font-size: 11px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .tva-select {
+      flex: 1;           /* fills remaining width */
+      min-width: 0;      /* override the 160px min — fits any screen */
+      width: 100%;
+      font-size: 12px;
+    }
+
+    /* 5 ── ACTION BUTTONS — side by side, equal width */
+    .totals-controls > div:last-child {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+    .totals-controls > div:last-child .btn {
+      flex: 1;
+      justify-content: center;
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+  }
+
+  /* ── Larger mobile / small tablet (601–768px) ── */
+  @media (max-width: 768px) {
+    .topnav { padding: 0 14px; }
+    .brand-badge { display: none; }
+    .main { padding: 14px 12px 40px; }
+    .project-card { padding: 14px 16px; }
+    .bpu-table { min-width: 750px; }
+    .totals-inner { padding: 14px 16px; }
+    .total-block-value { font-size: 15px; }
+    .nav-label { display: none; }
   }
 
   .pu-input.has-ref {
