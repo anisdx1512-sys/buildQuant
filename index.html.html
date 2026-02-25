@@ -1316,242 +1316,584 @@ async function downloadPDF() {
     return;
   }
 
-  // ── Gather data ──
-  const proj    = document.getElementById('proj-name').value   || 'Projet sans titre';
-  const client  = document.getElementById('proj-client').value || 'N/A';
-  const dateRaw = document.getElementById('proj-date').value;
-  const dateStr = dateRaw
-    ? new Date(dateRaw).toLocaleDateString('fr-DZ', {day:'2-digit',month:'long',year:'numeric'})
-    : new Date().toLocaleDateString('fr-DZ', {day:'2-digit',month:'long',year:'numeric'});
-  const tvaRate  = document.getElementById('tva-select').value;
-  const tvaLabel = tvaRate === '9'  ? 'TVA Réduite (9%) — Logements Sociaux'
-                 : tvaRate === '19' ? 'TVA Normale (19%)'
-                 :                    'Exonéré de TVA (0%)';
-  const ht  = rows.reduce((s, r) => s + calcRowTotal(r), 0);
-  const tva = ht * (parseFloat(tvaRate) / 100);
-  const ttc = ht + tva;
-  const generatedOn = new Date().toLocaleDateString('fr-DZ', {day:'2-digit',month:'long',year:'numeric'});
-  const refNum = 'BQ-' + Date.now().toString().slice(-6);
+  // ─────────────────────────────────────────────────
+  // 1. COLLECT DATA
+  // ─────────────────────────────────────────────────
+  const proj       = document.getElementById('proj-name').value   || 'Projet sans titre';
+  const client     = document.getElementById('proj-client').value || 'Non renseigné';
+  const dateRaw    = document.getElementById('proj-date').value;
+  const dateStr    = dateRaw
+    ? new Date(dateRaw + 'T12:00:00').toLocaleDateString('fr-DZ', {day:'2-digit', month:'long', year:'numeric'})
+    : new Date().toLocaleDateString('fr-DZ', {day:'2-digit', month:'long', year:'numeric'});
+  const tvaRate    = document.getElementById('tva-select').value;
+  const tvaLabel   = tvaRate === '9'  ? 'TVA Réduite — 9%'
+                   : tvaRate === '19' ? 'TVA Normale — 19%'
+                   :                    'Exonéré — 0%';
+  const ht         = rows.reduce((s, r) => s + calcRowTotal(r), 0);
+  const tva        = ht * (parseFloat(tvaRate) / 100);
+  const ttc        = ht + tva;
+  const genDate    = new Date().toLocaleDateString('fr-DZ', {day:'2-digit', month:'long', year:'numeric'});
+  const refNum     = 'BQ-' + Date.now().toString().slice(-6);
+  const filename   = `BuildQuant_DQE_${proj.replace(/[^a-zA-Z0-9\u00C0-\u017E]/g,'_').slice(0,40)}_${refNum}.pdf`;
 
-  // ── Build table rows HTML ──
-  let num = 0;
-  const tableRowsHtml = rows.map(row => {
+  // ─────────────────────────────────────────────────
+  // 2. BUILD TABLE ROWS
+  // ─────────────────────────────────────────────────
+  let rowNum = 0;
+  const tableBodyHtml = rows.map(row => {
     if (row.isSection) {
       return `
-        <tr class="section-row">
-          <td colspan="6" class="section-cell">${escPdf(row.desig)}</td>
+        <tr>
+          <td colspan="6" style="
+            background:#1e3a6e;color:#fff;
+            padding:7px 10px;
+            font-weight:700;font-size:9px;
+            text-transform:uppercase;letter-spacing:0.6px;
+            border-bottom:2px solid #b8cce4;">
+            ${escPdf(row.desig)}
+          </td>
         </tr>`;
     }
-    num++;
-    const total = calcRowTotal(row);
-    const isEven = num % 2 === 0;
+    rowNum++;
+    const total   = calcRowTotal(row);
+    const rowBg   = rowNum % 2 === 0 ? '#f4f8ff' : '#ffffff';
+    const descHtml = row.desc
+      ? `<div style="font-size:8px;color:#64748b;margin-top:3px;line-height:1.5;font-weight:400;">${escPdf(row.desc).replace(/\n/g,'<br>')}</div>`
+      : '';
     return `
-      <tr class="${isEven ? 'even-row' : ''}">
-        <td class="col-num">${num}</td>
-        <td class="col-desig">
-          <div class="desig-text">${escPdf(row.desig) || '<em>Sans désignation</em>'}</div>
-          ${row.desc ? `<div class="desc-text">${escPdf(row.desc).replace(/\n/g,'<br>')}</div>` : ''}
+      <tr style="page-break-inside:avoid;">
+        <td style="background:${rowBg};padding:7px 6px;text-align:center;
+            color:#94a3b8;font-size:8.5px;
+            border-right:1px solid #dde8f5;border-bottom:1px solid #dde8f5;
+            vertical-align:top;">${rowNum}</td>
+        <td style="background:${rowBg};padding:7px 10px;
+            border-right:1px solid #dde8f5;border-bottom:1px solid #dde8f5;
+            vertical-align:top;">
+          <div style="font-weight:600;font-size:9.5px;color:#1a2332;">${escPdf(row.desig) || '<em>Sans désignation</em>'}</div>
+          ${descHtml}
         </td>
-        <td class="col-unit">${escPdf(row.unit)}</td>
-        <td class="col-qty">${fmtNum(parseFloat(row.qty)||0)}</td>
-        <td class="col-pu">${fmtNum(parseFloat(row.pu)||0)}</td>
-        <td class="col-total">${fmtNum(total)}</td>
+        <td style="background:${rowBg};padding:7px 6px;text-align:center;
+            font-weight:600;font-size:9px;color:#334155;
+            border-right:1px solid #dde8f5;border-bottom:1px solid #dde8f5;
+            vertical-align:top;">${escPdf(row.unit)}</td>
+        <td style="background:${rowBg};padding:7px 8px;text-align:right;
+            font-family:monospace;font-size:9px;color:#334155;
+            border-right:1px solid #dde8f5;border-bottom:1px solid #dde8f5;
+            vertical-align:top;">${fmtNum(parseFloat(row.qty)||0)}</td>
+        <td style="background:${rowBg};padding:7px 8px;text-align:right;
+            font-family:monospace;font-size:9px;color:#334155;
+            border-right:1px solid #dde8f5;border-bottom:1px solid #dde8f5;
+            vertical-align:top;">${fmtNum(parseFloat(row.pu)||0)}</td>
+        <td style="background:${rowBg};padding:7px 8px;text-align:right;
+            font-family:monospace;font-size:9.5px;font-weight:700;color:#004AAD;
+            border-bottom:1px solid #dde8f5;
+            vertical-align:top;">${fmtNum(total)}</td>
       </tr>`;
   }).join('');
 
-  // ── Full PDF HTML document ──
-  const pdfHtml = `
-<div id="pdf-root" style="font-family:'Segoe UI',Arial,Helvetica,sans-serif;font-size:10.5px;color:#1a2332;line-height:1.45;background:#fff;width:210mm;margin:0 auto;">
-
-  <!-- ══ HEADER BAND ══ -->
-  <div style="background:#004AAD;color:#fff;padding:0;margin-bottom:0;position:relative;overflow:hidden;">
-    <!-- Decorative diagonal stripe -->
-    <div style="position:absolute;top:0;right:0;width:120px;height:100%;background:rgba(255,255,255,0.07);transform:skewX(-15deg);transform-origin:top right;"></div>
-    <div style="position:absolute;top:0;right:30px;width:60px;height:100%;background:rgba(255,255,255,0.05);transform:skewX(-15deg);"></div>
-
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 24px 14px;">
-      <!-- Brand -->
-      <div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;">
-          <div style="width:36px;height:36px;background:rgba(255,255,255,0.18);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🏗</div>
-          <div>
-            <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;line-height:1;">BuildQuant</div>
-            <div style="font-size:9px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;opacity:0.75;margin-top:1px;">Plateforme BTPH · Algérie</div>
-          </div>
-        </div>
-      </div>
-      <!-- Doc type + ref -->
-      <div style="text-align:right;">
-        <div style="font-size:13px;font-weight:700;letter-spacing:0.3px;background:rgba(255,255,255,0.15);padding:5px 12px;border-radius:5px;display:inline-block;">DEVIS QUANTITATIF ESTIMATIF</div>
-        <div style="font-size:9px;opacity:0.7;margin-top:5px;">BPU / DQE &nbsp;·&nbsp; Réf : ${refNum}</div>
-      </div>
-    </div>
-
-    <!-- Blue bottom accent line -->
-    <div style="height:4px;background:linear-gradient(90deg,#7eb8ff,#fff,#7eb8ff);opacity:0.4;"></div>
-  </div>
-
-  <!-- ══ META INFO BAR ══ -->
-  <div style="background:#f0f4fa;border:1px solid #c7d6ee;border-top:none;padding:10px 24px;display:flex;gap:0;margin-bottom:16px;">
-    <div style="flex:2;border-right:1px solid #d1ddf0;padding-right:16px;margin-right:16px;">
-      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#7a9cc0;margin-bottom:2px;">Intitulé du Projet</div>
-      <div style="font-size:11.5px;font-weight:700;color:#1a2332;">${escPdf(proj)}</div>
-    </div>
-    <div style="flex:1.5;border-right:1px solid #d1ddf0;padding-right:16px;margin-right:16px;">
-      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#7a9cc0;margin-bottom:2px;">Maître d'Ouvrage</div>
-      <div style="font-size:11px;font-weight:600;color:#1a2332;">${escPdf(client)}</div>
-    </div>
-    <div style="flex:1;border-right:1px solid #d1ddf0;padding-right:16px;margin-right:16px;">
-      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#7a9cc0;margin-bottom:2px;">Date du Devis</div>
-      <div style="font-size:11px;font-weight:600;color:#1a2332;">${dateStr}</div>
-    </div>
-    <div style="flex:1;">
-      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#7a9cc0;margin-bottom:2px;">Régime TVA</div>
-      <div style="font-size:10px;font-weight:600;color:#004AAD;">${tvaLabel}</div>
-    </div>
-  </div>
-
-  <!-- ══ SECTION TITLE ══ -->
-  <div style="display:flex;align-items:center;gap:8px;padding:0 24px;margin-bottom:8px;">
-    <div style="width:4px;height:16px;background:#004AAD;border-radius:2px;flex-shrink:0;"></div>
-    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#004AAD;">Bordereau des Prix Unitaires</span>
-    <div style="flex:1;height:1px;background:#d1ddf0;"></div>
-  </div>
-
-  <!-- ══ BPU TABLE ══ -->
-  <div style="padding:0 24px;margin-bottom:20px;">
-    <table style="width:100%;border-collapse:collapse;border:1.5px solid #b8cce4;border-radius:6px;overflow:hidden;font-size:9.5px;">
-      <thead>
-        <tr style="background:#004AAD;color:#fff;">
-          <th style="padding:8px 6px;text-align:center;width:30px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">N°</th>
-          <th style="padding:8px 10px;text-align:left;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">DÉSIGNATION DES TRAVAUX</th>
-          <th style="padding:8px 6px;text-align:center;width:45px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">UNITÉ</th>
-          <th style="padding:8px 8px;text-align:right;width:65px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">QUANTITÉ</th>
-          <th style="padding:8px 8px;text-align:right;width:90px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;border-right:1px solid rgba(255,255,255,0.15);">P.U. HT (DZD)</th>
-          <th style="padding:8px 8px;text-align:right;width:95px;font-size:8.5px;font-weight:700;letter-spacing:0.5px;">TOTAL HT (DZD)</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${tableRowsHtml}
-        <!-- Subtotal spacer row -->
-        <tr style="background:#f7faff;">
-          <td colspan="6" style="padding:4px 10px;border-top:2px solid #004AAD;"></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- ══ TOTALS SUMMARY ══ -->
-  <div style="padding:0 24px;margin-bottom:22px;display:flex;justify-content:flex-end;">
-    <div style="width:320px;border:1.5px solid #b8cce4;border-radius:6px;overflow:hidden;">
-      <!-- Header -->
-      <div style="background:#004AAD;color:#fff;padding:7px 14px;font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;">Récapitulatif Financier</div>
-      <!-- HT row -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #d1ddf0;background:#fff;">
-        <span style="font-size:10px;color:#475569;font-weight:500;">Total des travaux HT</span>
-        <span style="font-size:11px;font-weight:700;color:#1a2332;font-family:monospace;">${fmtNum(ht)} DZD</span>
-      </div>
-      <!-- TVA row -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid #d1ddf0;background:#fff;">
-        <span style="font-size:10px;color:#475569;font-weight:500;">TVA (${tvaRate}%)</span>
-        <span style="font-size:11px;font-weight:700;color:#475569;font-family:monospace;">${fmtNum(tva)} DZD</span>
-      </div>
-      <!-- TTC row — highlighted -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#004AAD;">
-        <span style="font-size:11px;color:#fff;font-weight:700;letter-spacing:0.3px;">MONTANT TOTAL TTC</span>
-        <span style="font-size:14px;font-weight:800;color:#fff;font-family:monospace;letter-spacing:-0.3px;">${fmtNum(ttc)} DZD</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══ SIGNATURE ZONE ══ -->
-  <div style="padding:0 24px;margin-bottom:20px;display:flex;gap:16px;">
-    <div style="flex:1;border:1px solid #d1ddf0;border-radius:5px;padding:10px 14px;min-height:60px;">
-      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:6px;">Lu et approuvé — Maître d'Ouvrage</div>
-      <div style="font-size:8px;color:#cbd5e1;">(Signature et cachet)</div>
-    </div>
-    <div style="flex:1;border:1px solid #d1ddf0;border-radius:5px;padding:10px 14px;min-height:60px;">
-      <div style="font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#94a3b8;margin-bottom:6px;">Établi par — Entrepreneur / BET</div>
-      <div style="font-size:8px;color:#cbd5e1;">(Signature et cachet)</div>
-    </div>
-  </div>
-
-  <!-- ══ FOOTER ══ -->
-  <div style="margin:0 24px;padding-top:10px;border-top:1.5px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
-    <div style="font-size:8px;color:#94a3b8;">
-      Document généré par <strong style="color:#004AAD;">BuildQuant</strong> — Plateforme de Métrés BTPH &nbsp;·&nbsp; Algérie
-    </div>
-    <div style="font-size:8px;color:#94a3b8;">
-      Généré le ${generatedOn} &nbsp;·&nbsp; Réf : ${refNum}
-    </div>
-  </div>
-
-</div>
-
+  // ─────────────────────────────────────────────────
+  // 3. COMPOSE PDF HTML
+  // NOTE: html2canvas does NOT support:
+  //   • CSS transforms (skewX etc.) → removed
+  //   • display:flex reliably → using table/inline-block layouts
+  //   • position:sticky/fixed → avoided
+  //   • CSS grid in some versions → using tables
+  // ─────────────────────────────────────────────────
+  const pdfContent = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
 <style>
-  .section-row .section-cell {
-    background: #dbeafe;
-    padding: 7px 10px;
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    color: #1a2332;
+    background: #fff;
+    width: 794px;   /* A4 at 96dpi — exact canvas width */
+  }
+  /* ── HEADER ── */
+  .pdf-header {
+    background: #004AAD;
+    color: #fff;
+    padding: 16px 24px 14px;
+  }
+  .pdf-header-inner {
+    display: table;
+    width: 100%;
+  }
+  .pdf-brand-cell {
+    display: table-cell;
+    vertical-align: middle;
+  }
+  .pdf-ref-cell {
+    display: table-cell;
+    vertical-align: middle;
+    text-align: right;
+    width: 260px;
+  }
+  .pdf-logo-row {
+    display: table;
+  }
+  .pdf-logo-icon {
+    display: table-cell;
+    vertical-align: middle;
+    width: 38px;
+  }
+  .pdf-logo-box {
+    width: 34px; height: 34px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 7px;
+    text-align: center;
+    line-height: 34px;
+    font-size: 18px;
+  }
+  .pdf-logo-text {
+    display: table-cell;
+    vertical-align: middle;
+    padding-left: 10px;
+  }
+  .pdf-brandname {
+    font-size: 20px;
     font-weight: 800;
+    letter-spacing: -0.3px;
+    line-height: 1;
+    color: #fff;
+  }
+  .pdf-brandsub {
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    opacity: 0.72;
+    margin-top: 2px;
+    color: #fff;
+  }
+  .pdf-doc-type {
+    display: inline-block;
+    background: rgba(255,255,255,0.16);
+    padding: 5px 12px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: #fff;
+  }
+  .pdf-ref {
+    font-size: 8.5px;
+    opacity: 0.65;
+    margin-top: 5px;
+    color: #fff;
+  }
+  .pdf-header-accent {
+    height: 3px;
+    background: #4d8fe0;
+    margin-top: 14px;
+    margin-left: -24px;
+    margin-right: -24px;
+    width: calc(100% + 48px);
+  }
+  /* ── META BAR ── */
+  .pdf-meta {
+    background: #eef3fa;
+    border-bottom: 2px solid #b8cce4;
+    padding: 10px 0;
+  }
+  .pdf-meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    padding: 0 24px;
+    display: block;
+  }
+  .pdf-meta-inner {
+    display: table;
+    width: 746px;
+    margin: 0 24px;
+    border-collapse: collapse;
+  }
+  .pdf-meta-cell {
+    display: table-cell;
+    padding: 0 14px 0 0;
+    border-right: 1px solid #c7d6ee;
+    vertical-align: top;
+  }
+  .pdf-meta-cell:last-child {
+    border-right: none;
+    padding-right: 0;
+  }
+  .pdf-meta-cell + .pdf-meta-cell {
+    padding-left: 14px;
+  }
+  .pdf-meta-lbl {
+    font-size: 7.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: #7a9cc0;
+    margin-bottom: 3px;
+  }
+  .pdf-meta-val {
+    font-size: 10px;
+    font-weight: 700;
+    color: #1a2332;
+  }
+  .pdf-meta-val.blue { color: #004AAD; }
+  /* ── SECTION TITLE ── */
+  .pdf-section-title {
+    padding: 12px 24px 8px;
+    border-bottom: 2px solid #004AAD;
+    margin-bottom: 0;
+  }
+  .pdf-section-title-inner {
+    font-size: 9.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #004AAD;
+  }
+  /* ── MAIN TABLE ── */
+  .pdf-table-wrap { padding: 0 24px; }
+  .pdf-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1.5px solid #b8cce4;
     font-size: 9px;
+  }
+  .pdf-table thead tr {
+    background: #004AAD;
+    color: #fff;
+  }
+  .pdf-table thead th {
+    padding: 8px 8px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-right: 1px solid rgba(255,255,255,0.18);
+    white-space: nowrap;
+  }
+  .pdf-table thead th:last-child { border-right: none; }
+  .pdf-table thead th.right { text-align: right; }
+  .pdf-table thead th.center { text-align: center; }
+  .pdf-table tbody tr { page-break-inside: avoid; }
+  /* ── TOTALS BOX ── */
+  .pdf-totals-wrap {
+    padding: 0 24px;
+    margin-top: 18px;
+    text-align: right;
+  }
+  .pdf-totals-box {
+    display: inline-block;
+    width: 310px;
+    border: 1.5px solid #b8cce4;
+    border-radius: 5px;
+    overflow: hidden;
+    text-align: left;
+  }
+  .pdf-totals-header {
+    background: #004AAD;
+    color: #fff;
+    padding: 6px 12px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .pdf-totals-row {
+    display: table;
+    width: 100%;
+    border-bottom: 1px solid #dde8f5;
+    background: #fff;
+  }
+  .pdf-totals-row:last-child { border-bottom: none; }
+  .pdf-totals-lbl {
+    display: table-cell;
+    padding: 8px 12px;
+    font-size: 9px;
+    color: #475569;
+    font-weight: 500;
+    vertical-align: middle;
+  }
+  .pdf-totals-val {
+    display: table-cell;
+    padding: 8px 12px;
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: #1a2332;
+    text-align: right;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .pdf-totals-ttc {
+    background: #004AAD;
+  }
+  .pdf-totals-ttc .pdf-totals-lbl {
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+  }
+  .pdf-totals-ttc .pdf-totals-val {
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  /* ── SIGNATURES ── */
+  .pdf-sig {
+    display: table;
+    width: 746px;
+    margin: 18px 24px 0;
+    border-collapse: separate;
+    border-spacing: 14px 0;
+  }
+  .pdf-sig-cell {
+    display: table-cell;
+    width: 50%;
+    border: 1px solid #d1ddf0;
+    border-radius: 4px;
+    padding: 10px 12px;
+    min-height: 55px;
+    vertical-align: top;
+  }
+  .pdf-sig-lbl {
+    font-size: 7.5px;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: #1e40af;
-    border-top: 1px solid #bfdbfe;
-    border-bottom: 1px solid #bfdbfe;
+    color: #94a3b8;
+    margin-bottom: 18px;
   }
-  .even-row td { background: #f8faff; }
-  .col-num   { padding:7px 6px; text-align:center; color:#94a3b8; font-size:9px; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; vertical-align:top; }
-  .col-desig { padding:7px 10px; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; vertical-align:top; }
-  .col-unit  { padding:7px 6px; text-align:center; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; font-weight:600; color:#475569; vertical-align:top; }
-  .col-qty   { padding:7px 8px; text-align:right; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; font-family:monospace; vertical-align:top; }
-  .col-pu    { padding:7px 8px; text-align:right; border-right:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; font-family:monospace; vertical-align:top; }
-  .col-total { padding:7px 8px; text-align:right; border-bottom:1px solid #e2e8f0; font-family:monospace; font-weight:700; color:#004AAD; vertical-align:top; }
-  .desig-text { font-weight:600; color:#1a2332; font-size:9.5px; }
-  .desc-text  { font-size:8.5px; color:#64748b; margin-top:3px; line-height:1.5; }
+  /* ── FOOTER ── */
+  .pdf-footer {
+    margin: 18px 24px 0;
+    padding-top: 8px;
+    border-top: 1.5px solid #e2e8f0;
+    display: table;
+    width: 746px;
+  }
+  .pdf-footer-left, .pdf-footer-right {
+    display: table-cell;
+    font-size: 7.5px;
+    color: #94a3b8;
+    vertical-align: middle;
+  }
+  .pdf-footer-right { text-align: right; }
+  .pdf-footer-strong { color: #004AAD; font-weight: 700; }
 </style>
-`;
+</head>
+<body>
 
-  // ── Inject hidden render container ──
-  let container = document.getElementById('pdf-render-zone');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'pdf-render-zone';
-    container.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;background:#fff;z-index:-1;';
-    document.body.appendChild(container);
-  }
-  container.innerHTML = pdfHtml;
+<!-- ══ HEADER ══ -->
+<div class="pdf-header">
+  <div class="pdf-header-inner">
+    <div class="pdf-brand-cell">
+      <div class="pdf-logo-row">
+        <div class="pdf-logo-icon">
+          <div class="pdf-logo-box">&#127959;</div>
+        </div>
+        <div class="pdf-logo-text">
+          <div class="pdf-brandname">BuildQuant</div>
+          <div class="pdf-brandsub">Plateforme BTPH &nbsp;&middot;&nbsp; Alg&eacute;rie</div>
+        </div>
+      </div>
+    </div>
+    <div class="pdf-ref-cell">
+      <div class="pdf-doc-type">DEVIS QUANTITATIF ESTIMATIF</div>
+      <div class="pdf-ref">BPU &nbsp;/&nbsp; DQE &nbsp;&nbsp;&middot;&nbsp;&nbsp; R&eacute;f&nbsp;: ${refNum}</div>
+    </div>
+  </div>
+  <div class="pdf-header-accent"></div>
+</div>
 
-  // ── Show loading state on button ──
+<!-- ══ META BAR ══ -->
+<div class="pdf-meta">
+  <div class="pdf-meta-inner">
+    <div class="pdf-meta-cell" style="width:36%">
+      <div class="pdf-meta-lbl">Intitul&eacute; du Projet</div>
+      <div class="pdf-meta-val">${escPdf(proj)}</div>
+    </div>
+    <div class="pdf-meta-cell" style="width:28%">
+      <div class="pdf-meta-lbl">Ma&icirc;tre d&rsquo;Ouvrage</div>
+      <div class="pdf-meta-val">${escPdf(client)}</div>
+    </div>
+    <div class="pdf-meta-cell" style="width:20%">
+      <div class="pdf-meta-lbl">Date du Devis</div>
+      <div class="pdf-meta-val">${dateStr}</div>
+    </div>
+    <div class="pdf-meta-cell" style="width:16%">
+      <div class="pdf-meta-lbl">R&eacute;gime TVA</div>
+      <div class="pdf-meta-val blue">${tvaLabel}</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SECTION TITLE ══ -->
+<div class="pdf-section-title">
+  <span class="pdf-section-title-inner">&#9632;&nbsp; Bordereau des Prix Unitaires — D&eacute;tail Quantitatif Estimatif (DQE)</span>
+</div>
+
+<!-- ══ MAIN TABLE ══ -->
+<div class="pdf-table-wrap">
+  <table class="pdf-table">
+    <thead>
+      <tr>
+        <th class="center" style="width:30px;">N&deg;</th>
+        <th style="text-align:left;">D&eacute;signation des Travaux</th>
+        <th class="center" style="width:48px;">Unit&eacute;</th>
+        <th class="right" style="width:68px;">Quantit&eacute;</th>
+        <th class="right" style="width:92px;">P.U.&nbsp;HT (DZD)</th>
+        <th class="right" style="width:98px;">Total&nbsp;HT (DZD)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${tableBodyHtml}
+      <tr>
+        <td colspan="6" style="padding:5px 8px;border-top:2px solid #004AAD;background:#f0f6ff;"></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══ TOTALS BOX ══ -->
+<div class="pdf-totals-wrap" style="page-break-inside:avoid;">
+  <div class="pdf-totals-box">
+    <div class="pdf-totals-header">R&eacute;capitulatif Financier</div>
+    <div class="pdf-totals-row">
+      <div class="pdf-totals-lbl">Total des travaux HT</div>
+      <div class="pdf-totals-val">${fmtNum(ht)}&nbsp;DZD</div>
+    </div>
+    <div class="pdf-totals-row">
+      <div class="pdf-totals-lbl">TVA (${tvaRate}%)</div>
+      <div class="pdf-totals-val">${fmtNum(tva)}&nbsp;DZD</div>
+    </div>
+    <div class="pdf-totals-row pdf-totals-ttc">
+      <div class="pdf-totals-lbl">MONTANT TOTAL TTC</div>
+      <div class="pdf-totals-val">${fmtNum(ttc)}&nbsp;DZD</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SIGNATURES ══ -->
+<div class="pdf-sig" style="page-break-inside:avoid;">
+  <div class="pdf-sig-cell">
+    <div class="pdf-sig-lbl">Lu et approuv&eacute; &mdash; Ma&icirc;tre d&rsquo;Ouvrage</div>
+    <div style="font-size:7.5px;color:#cbd5e1;">(Signature et cachet)</div>
+  </div>
+  <div class="pdf-sig-cell">
+    <div class="pdf-sig-lbl">&Eacute;tabli par &mdash; Entrepreneur / Bureau d&rsquo;&Eacute;tudes</div>
+    <div style="font-size:7.5px;color:#cbd5e1;">(Signature et cachet)</div>
+  </div>
+</div>
+
+<!-- ══ FOOTER ══ -->
+<div class="pdf-footer">
+  <div class="pdf-footer-left">
+    Document g&eacute;n&eacute;r&eacute; par <span class="pdf-footer-strong">BuildQuant</span>
+    &mdash; Plateforme de M&eacute;tr&eacute;s BTPH &nbsp;&middot;&nbsp; Alg&eacute;rie
+  </div>
+  <div class="pdf-footer-right">G&eacute;n&eacute;r&eacute; le ${genDate} &nbsp;&middot;&nbsp; R&eacute;f&nbsp;: ${refNum}</div>
+</div>
+
+</body></html>`;
+
+  // ─────────────────────────────────────────────────
+  // 4. RENDER INTO HIDDEN IFRAME (avoids scroll-offset
+  //    bugs that happen with off-screen divs)
+  // ─────────────────────────────────────────────────
+  let iframe = document.getElementById('pdf-iframe');
+  if (iframe) iframe.remove();
+  iframe = document.createElement('iframe');
+  iframe.id = 'pdf-iframe';
+  iframe.style.cssText = [
+    'position:fixed',
+    'top:0',
+    'left:0',
+    'width:794px',
+    'height:1px',
+    'opacity:0',
+    'pointer-events:none',
+    'border:none',
+    'z-index:-999'
+  ].join(';');
+  document.body.appendChild(iframe);
+
+  // Write HTML into the iframe and wait for it to render
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(pdfContent);
+  iframe.contentDocument.close();
+
+  await new Promise(resolve => {
+    if (iframe.contentDocument.readyState === 'complete') return resolve();
+    iframe.onload = resolve;
+    setTimeout(resolve, 800); // fallback
+  });
+  // Extra tick so images/fonts can settle
+  await new Promise(r => setTimeout(r, 400));
+
+  // ─────────────────────────────────────────────────
+  // 5. BUTTON LOADING STATE
+  // ─────────────────────────────────────────────────
   const btns = document.querySelectorAll('[onclick="downloadPDF()"]');
-  btns.forEach(b => { b._orig = b.innerHTML; b.innerHTML = '⏳ Génération…'; b.disabled = true; });
-  showToast('⏳ Génération du PDF en cours…');
+  btns.forEach(b => {
+    b._origHTML = b.innerHTML;
+    b.innerHTML  = '⏳&nbsp;Génération…';
+    b.disabled   = true;
+    b.style.opacity = '0.75';
+  });
+  showToast('⏳ Génération du PDF — veuillez patienter…');
 
-  const filename = `BuildQuant_DQE_${proj.replace(/[^a-zA-Z0-9\u00C0-\u017E]/g,'_').slice(0,40)}_${refNum}.pdf`;
-
+  // ─────────────────────────────────────────────────
+  // 6. HTML2PDF OPTIONS
+  //    • scale:3 → sharp text at A4 size
+  //    • pagebreak mode 'css' + 'legacy' (not avoid-all
+  //      which creates blank pages)
+  //    • margin in mm: top 10, right 0, bottom 10, left 0
+  //      (content already has 24px internal padding)
+  // ─────────────────────────────────────────────────
   const opt = {
-    margin:      [8, 0, 8, 0],   // top, right, bottom, left in mm
+    margin:      [10, 0, 10, 0],
     filename,
-    image:       { type: 'jpeg', quality: 0.97 },
-    html2canvas: { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
-    jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak:   { mode: ['avoid-all', 'css', 'legacy'] }
+    image:       { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale:           3,
+      useCORS:         true,
+      letterRendering: true,
+      scrollX:         0,
+      scrollY:         0,
+      windowWidth:     794,
+      backgroundColor: '#ffffff'
+    },
+    jsPDF:     { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+    pagebreak: { mode: ['css', 'legacy'], before: '.page-break-before', avoid: '.pdf-totals-wrap,.pdf-sig' }
   };
 
   try {
-    await html2pdf().set(opt).from(container.querySelector('#pdf-root')).save();
+    const sourceEl = iframe.contentDocument.body;
+    await html2pdf().set(opt).from(sourceEl).save();
     showToast('✅ PDF téléchargé avec succès !');
-  } catch(e) {
-    showToast('⚠ Erreur lors de la génération du PDF');
-    console.error(e);
+  } catch(err) {
+    console.error('PDF error:', err);
+    showToast('⚠ Erreur lors de la génération. Réessayez.');
   } finally {
-    btns.forEach(b => { b.innerHTML = b._orig; b.disabled = false; });
+    btns.forEach(b => {
+      b.innerHTML    = b._origHTML;
+      b.disabled     = false;
+      b.style.opacity = '';
+    });
+    // Clean up the iframe after a short delay
+    setTimeout(() => { if (iframe) iframe.remove(); }, 2000);
   }
 }
 
-// helper — escape for inside PDF HTML strings
+// ── HTML-escape helper for PDF content ──
 function escPdf(s) {
-  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return (s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 // ── TOAST ──
