@@ -1311,10 +1311,268 @@ function clearAll() {
 
 // ── DOWNLOAD PDF (html2pdf.js) ──
 async function downloadPDF() {
-  if (rows.length === 0) {
-    showToast('⚠ Ajoutez au moins un poste avant d\'exporter');
-    return;
+  // ── guard ──
+  if (!window.html2pdf) { showToast('⚠ Librairie PDF non chargée, réessayez.'); return; }
+  if (rows.length === 0) { showToast('⚠ Ajoutez au moins un poste avant d\'exporter'); return; }
+
+  // ── 1. Collect data ──────────────────────────────────────────────────────
+  const proj    = document.getElementById('proj-name').value   || 'Projet sans titre';
+  const client  = document.getElementById('proj-client').value || 'Non renseigné';
+  const dateRaw = document.getElementById('proj-date').value;
+  const dateStr = dateRaw
+    ? new Date(dateRaw + 'T12:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})
+    : new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  const tvaRate  = document.getElementById('tva-select').value;
+  const tvaLabel = tvaRate==='9' ? 'TVA Réduite — 9%' : tvaRate==='19' ? 'TVA Normale — 19%' : 'Exonéré — 0%';
+  const ht  = rows.reduce((s,r)=>s+calcRowTotal(r),0);
+  const tva = ht*(parseFloat(tvaRate)/100);
+  const ttc = ht+tva;
+  const genDate = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  const refNum  = 'BQ-'+Date.now().toString().slice(-6);
+  const fn = 'BuildQuant_DQE_'+proj.replace(/[^a-zA-Z0-9\u00C0-\u017E]/g,'_').slice(0,35)+'_'+refNum+'.pdf';
+
+  // ── 2. Build table body ──────────────────────────────────────────────────
+  let n = 0;
+  const tbRows = rows.map(row=>{
+    if(row.isSection){
+      return `<tr><td colspan="6" style="background:#1e3a6e;color:#fff;padding:7px 10px;font-weight:700;
+        font-size:9px;text-transform:uppercase;letter-spacing:.6px;border-bottom:2px solid #3b6ab5;">
+        ${ep(row.desig)}</td></tr>`;
+    }
+    n++;
+    const tot = calcRowTotal(row);
+    const bg  = n%2===0?'#f3f7ff':'#ffffff';
+    const dsc = row.desc
+      ? `<div style="font-size:8px;color:#64748b;margin-top:3px;line-height:1.5;">${ep(row.desc).replace(/\n/g,'<br>')}</div>`
+      : '';
+    return `<tr style="page-break-inside:avoid;">
+      <td style="background:${bg};padding:7px 5px;text-align:center;color:#94a3b8;font-size:8.5px;
+        border-right:1px solid #dde8f5;border-bottom:1px solid #dde8f5;vertical-align:top;">${n}</td>
+      <td style="background:${bg};padding:7px 9px;border-right:1px solid #dde8f5;
+        border-bottom:1px solid #dde8f5;vertical-align:top;">
+        <div style="font-weight:700;font-size:9.5px;color:#1a2332;">${ep(row.desig)||'<em>—</em>'}</div>${dsc}</td>
+      <td style="background:${bg};padding:7px 5px;text-align:center;font-weight:600;font-size:9px;color:#334155;
+        border-right:1px solid #dde8f5;border-bottom:1px solid #dde8f5;vertical-align:top;">${ep(row.unit)}</td>
+      <td style="background:${bg};padding:7px 7px;text-align:right;font-family:Courier,monospace;font-size:9px;
+        border-right:1px solid #dde8f5;border-bottom:1px solid #dde8f5;vertical-align:top;">${fmtNum(parseFloat(row.qty)||0)}</td>
+      <td style="background:${bg};padding:7px 7px;text-align:right;font-family:Courier,monospace;font-size:9px;
+        border-right:1px solid #dde8f5;border-bottom:1px solid #dde8f5;vertical-align:top;">${fmtNum(parseFloat(row.pu)||0)}</td>
+      <td style="background:${bg};padding:7px 7px;text-align:right;font-family:Courier,monospace;font-size:9.5px;
+        font-weight:700;color:#004AAD;border-bottom:1px solid #dde8f5;vertical-align:top;">${fmtNum(tot)}</td>
+    </tr>`;
+  }).join('');
+
+  // ── 3. Compose PDF node (table-based layout for html2canvas reliability) ──
+  const wrap = document.createElement('div');
+  wrap.id = '__bq_pdf__';
+  // Positioned at top-left, visible to html2canvas, hidden behind app via z-index
+  wrap.style.cssText = [
+    'position:fixed','top:0','left:0',
+    'width:794px',   // A4 @ 96dpi
+    'background:#fff',
+    'z-index:-9999',
+    'pointer-events:none',
+    'font-family:Arial,Helvetica,sans-serif',
+    'font-size:10px',
+    'color:#1a2332',
+    'line-height:1.5'
+  ].join(';');
+
+  wrap.innerHTML = `
+<!-- HEADER -->
+<div style="background:#004AAD;color:#fff;padding:16px 24px 12px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td valign="middle">
+      <table cellpadding="0" cellspacing="0" border="0"><tr>
+        <td valign="middle" width="42">
+          <div style="width:36px;height:36px;background:rgba(255,255,255,.2);border-radius:7px;
+            text-align:center;line-height:36px;font-size:19px;">&#127959;</div>
+        </td>
+        <td valign="middle" style="padding-left:10px;">
+          <div style="font-size:21px;font-weight:800;letter-spacing:-.3px;color:#fff;">BuildQuant</div>
+          <div style="font-size:8px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;
+            opacity:.72;color:#fff;">Plateforme BTPH &middot; Alg&eacute;rie</div>
+        </td>
+      </tr></table>
+    </td>
+    <td valign="middle" align="right">
+      <div style="display:inline-block;background:rgba(255,255,255,.16);padding:5px 13px;
+        border-radius:5px;font-size:11px;font-weight:700;letter-spacing:.3px;color:#fff;">
+        DEVIS QUANTITATIF ESTIMATIF</div>
+      <div style="font-size:8.5px;opacity:.65;margin-top:5px;color:#fff;">
+        BPU / DQE &nbsp;&middot;&nbsp; R&eacute;f&nbsp;: ${refNum}</div>
+    </td>
+  </tr></table>
+  <div style="height:3px;background:#4d8fe0;margin:12px -24px -12px;"></div>
+</div>
+
+<!-- META BAR -->
+<div style="background:#eef3fa;border-bottom:2px solid #b8cce4;padding:10px 24px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td width="36%" style="padding-right:14px;border-right:1px solid #c7d6ee;vertical-align:top;">
+      <div style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+        color:#7a9cc0;margin-bottom:3px;">Intitul&eacute; du Projet</div>
+      <div style="font-size:10.5px;font-weight:700;color:#1a2332;">${ep(proj)}</div>
+    </td>
+    <td width="28%" style="padding:0 14px;border-right:1px solid #c7d6ee;vertical-align:top;">
+      <div style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+        color:#7a9cc0;margin-bottom:3px;">Ma&icirc;tre d'Ouvrage</div>
+      <div style="font-size:10px;font-weight:700;color:#1a2332;">${ep(client)}</div>
+    </td>
+    <td width="20%" style="padding:0 14px;border-right:1px solid #c7d6ee;vertical-align:top;">
+      <div style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+        color:#7a9cc0;margin-bottom:3px;">Date du Devis</div>
+      <div style="font-size:10px;font-weight:700;color:#1a2332;">${dateStr}</div>
+    </td>
+    <td style="padding-left:14px;vertical-align:top;">
+      <div style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;
+        color:#7a9cc0;margin-bottom:3px;">R&eacute;gime TVA</div>
+      <div style="font-size:9.5px;font-weight:700;color:#004AAD;">${tvaLabel}</div>
+    </td>
+  </tr></table>
+</div>
+
+<!-- SECTION LABEL -->
+<div style="padding:11px 24px 8px;border-bottom:2px solid #004AAD;">
+  <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#004AAD;">
+    &#9632;&nbsp; Bordereau des Prix Unitaires — D&eacute;tail Quantitatif Estimatif (DQE)</span>
+</div>
+
+<!-- BPU TABLE -->
+<div style="padding:0 24px;">
+  <table width="100%" cellpadding="0" cellspacing="0"
+    style="border-collapse:collapse;border:1.5px solid #b8cce4;font-size:9px;">
+    <thead>
+      <tr style="background:#004AAD;color:#fff;">
+        <th width="30" style="padding:8px 5px;text-align:center;font-size:8px;font-weight:700;
+          letter-spacing:.5px;text-transform:uppercase;border-right:1px solid rgba(255,255,255,.2);">N&deg;</th>
+        <th style="padding:8px 9px;text-align:left;font-size:8px;font-weight:700;
+          letter-spacing:.5px;text-transform:uppercase;border-right:1px solid rgba(255,255,255,.2);">D&eacute;signation des Travaux</th>
+        <th width="48" style="padding:8px 5px;text-align:center;font-size:8px;font-weight:700;
+          letter-spacing:.5px;text-transform:uppercase;border-right:1px solid rgba(255,255,255,.2);">Unit&eacute;</th>
+        <th width="68" style="padding:8px 7px;text-align:right;font-size:8px;font-weight:700;
+          letter-spacing:.5px;text-transform:uppercase;border-right:1px solid rgba(255,255,255,.2);">Quantit&eacute;</th>
+        <th width="92" style="padding:8px 7px;text-align:right;font-size:8px;font-weight:700;
+          letter-spacing:.5px;text-transform:uppercase;border-right:1px solid rgba(255,255,255,.2);">P.U. HT (DZD)</th>
+        <th width="98" style="padding:8px 7px;text-align:right;font-size:8px;font-weight:700;
+          letter-spacing:.5px;text-transform:uppercase;">Total HT (DZD)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${tbRows}
+      <tr><td colspan="6" style="padding:5px;border-top:2px solid #004AAD;background:#f0f6ff;"></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- TOTALS BOX -->
+<div style="padding:18px 24px 0;text-align:right;page-break-inside:avoid;">
+  <table width="310" cellpadding="0" cellspacing="0" align="right"
+    style="border-collapse:collapse;border:1.5px solid #b8cce4;text-align:left;">
+    <tr><td colspan="2" style="background:#004AAD;color:#fff;padding:7px 12px;
+      font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;">
+      R&eacute;capitulatif Financier</td></tr>
+    <tr style="border-bottom:1px solid #dde8f5;">
+      <td style="background:#fff;padding:8px 12px;font-size:9px;color:#475569;font-weight:500;">
+        Total des travaux HT</td>
+      <td style="background:#fff;padding:8px 12px;text-align:right;font-family:Courier,monospace;
+        font-size:10px;font-weight:700;color:#1a2332;white-space:nowrap;">${fmtNum(ht)}&nbsp;DZD</td>
+    </tr>
+    <tr style="border-bottom:1px solid #dde8f5;">
+      <td style="background:#fff;padding:8px 12px;font-size:9px;color:#475569;font-weight:500;">
+        TVA (${tvaRate}%)</td>
+      <td style="background:#fff;padding:8px 12px;text-align:right;font-family:Courier,monospace;
+        font-size:10px;font-weight:700;color:#475569;white-space:nowrap;">${fmtNum(tva)}&nbsp;DZD</td>
+    </tr>
+    <tr>
+      <td style="background:#004AAD;padding:10px 12px;font-size:10px;font-weight:700;
+        letter-spacing:.2px;color:#fff;">MONTANT TOTAL TTC</td>
+      <td style="background:#004AAD;padding:10px 12px;text-align:right;font-family:Courier,monospace;
+        font-size:13px;font-weight:800;color:#fff;white-space:nowrap;">${fmtNum(ttc)}&nbsp;DZD</td>
+    </tr>
+  </table>
+  <div style="clear:both;"></div>
+</div>
+
+<!-- SIGNATURES -->
+<div style="padding:18px 24px 0;page-break-inside:avoid;">
+  <table width="100%" cellpadding="0" cellspacing="12" border="0"><tr>
+    <td style="border:1px solid #d1ddf0;border-radius:4px;padding:10px 12px;vertical-align:top;">
+      <div style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+        color:#94a3b8;margin-bottom:18px;">Lu et approuv&eacute; — Ma&icirc;tre d'Ouvrage</div>
+      <div style="font-size:7.5px;color:#cbd5e1;">(Signature et cachet)</div>
+    </td>
+    <td style="border:1px solid #d1ddf0;border-radius:4px;padding:10px 12px;vertical-align:top;">
+      <div style="font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+        color:#94a3b8;margin-bottom:18px;">&Eacute;tabli par — Entrepreneur / Bureau d'&Eacute;tudes</div>
+      <div style="font-size:7.5px;color:#cbd5e1;">(Signature et cachet)</div>
+    </td>
+  </tr></table>
+</div>
+
+<!-- FOOTER -->
+<div style="margin:16px 24px 0;padding-top:8px;border-top:1.5px solid #e2e8f0;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="font-size:7.5px;color:#94a3b8;">
+      Document g&eacute;n&eacute;r&eacute; par
+      <strong style="color:#004AAD;">BuildQuant</strong>
+      — Plateforme de M&eacute;tr&eacute;s BTPH &nbsp;&middot;&nbsp; Alg&eacute;rie
+    </td>
+    <td align="right" style="font-size:7.5px;color:#94a3b8;">
+      G&eacute;n&eacute;r&eacute; le ${genDate} &nbsp;&middot;&nbsp; R&eacute;f&nbsp;: ${refNum}
+    </td>
+  </tr></table>
+</div>
+`;
+
+  document.body.appendChild(wrap);
+
+  // Small settle time so browser finishes painting
+  await new Promise(r => setTimeout(r, 80));
+
+  // ── 4. Button loading state ──────────────────────────────────────────────
+  const btns = document.querySelectorAll('[onclick="downloadPDF()"]');
+  btns.forEach(b => { b._h = b.innerHTML; b.innerHTML = '⏳ Génération en cours...'; b.disabled = true; b.style.opacity='.7'; });
+  showToast('⏳ Génération du PDF — veuillez patienter…');
+
+  // ── 5. html2pdf options ──────────────────────────────────────────────────
+  const opt = {
+    margin:      [10, 10, 10, 10],
+    filename:    fn,
+    image:       { type: 'jpeg', quality: 0.97 },
+    html2canvas: {
+      scale:           2.5,
+      useCORS:         true,
+      letterRendering: true,
+      scrollX:         0,
+      scrollY:         0,
+      windowWidth:     794,
+      backgroundColor: '#ffffff',
+      logging:         false
+    },
+    jsPDF:     { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+    pagebreak: { mode: ['css','legacy'], avoid: '[style*="page-break-inside:avoid"]' }
+  };
+
+  // ── 6. Generate & clean up ───────────────────────────────────────────────
+  try {
+    await html2pdf().set(opt).from(wrap).save();
+    showToast('✅ PDF téléchargé avec succès !');
+  } catch(err) {
+    console.error('PDF error:', err);
+    showToast('⚠ Erreur PDF — ouvrez la console pour les détails');
+  } finally {
+    wrap.remove();
+    btns.forEach(b => { b.innerHTML = b._h; b.disabled = false; b.style.opacity = ''; });
   }
+}
+
+// HTML-escape for PDF injection
+function ep(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+// Keep old alias so nothing else breaks
+function escPdf(s){ return ep(s); }
 
   // ─────────────────────────────────────────────────
   // 1. COLLECT DATA
@@ -1885,15 +2143,6 @@ async function downloadPDF() {
     // Clean up the iframe after a short delay
     setTimeout(() => { if (iframe) iframe.remove(); }, 2000);
   }
-}
-
-// ── HTML-escape helper for PDF content ──
-function escPdf(s) {
-  return (s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 // ── TOAST ──
